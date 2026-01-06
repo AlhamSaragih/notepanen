@@ -12,7 +12,8 @@
       --text:#111827;
       --muted:#6b7280;
       --danger:#dc2626;
-      --accent:#facc15; /* tombol kuning */
+      --accent:#2563eb;  /* tombol biru */
+      --accentHover:#1d4ed8;
     }
     *{ box-sizing:border-box; }
     body{
@@ -32,7 +33,7 @@
       letter-spacing: .2px;
     }
 
-    /* supaya nyaman di HP (anti clipping + anti auto zoom iOS) */
+    /* nyaman di HP (anti clipping + anti auto zoom iOS) */
     input, button { font-size:16px; line-height:1.2; }
 
     .card{
@@ -79,8 +80,9 @@
       font-weight: 800;
       cursor: pointer;
       background: var(--accent);
-      color:#111827;
+      color:#ffffff;
     }
+    .btn:hover{ background: var(--accentHover); }
     .btn:disabled{ opacity:.6; cursor:not-allowed; }
 
     .hint{
@@ -159,7 +161,6 @@
       color:#111827;
       text-align:center;
     }
-    .muted{ color: var(--muted); }
 
     .del{
       border:1px solid #fecaca;
@@ -183,18 +184,17 @@
   <div class="wrap">
     <h1>Catatan Panen</h1>
 
-    <!-- INPUT UTAMA -->
     <div class="card">
       <form id="formAdd" autocomplete="off">
         <div class="form-grid">
           <div class="field">
             <label for="ekor">Ekor</label>
-            <input id="ekor" type="text" inputmode="numeric" enterkeyhint="next" placeholder="Misal: 12" />
+            <input id="ekor" type="text" inputmode="numeric" enterkeyhint="next" placeholder="Misal: 11" />
           </div>
 
           <div class="field">
             <label for="berat">Berat kotak</label>
-            <input id="berat" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Misal: 23.5" />
+            <input id="berat" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Misal: 24.0" />
           </div>
 
           <button class="btn" id="btnSubmit" type="submit">Submit</button>
@@ -205,7 +205,6 @@
       </form>
     </div>
 
-    <!-- SUMMARY -->
     <div class="summary">
       <div class="summary-grid">
         <div class="stat">
@@ -227,7 +226,6 @@
       </div>
     </div>
 
-    <!-- LIST -->
     <div class="list">
       <div class="list-head">
         <div>No.</div>
@@ -245,7 +243,6 @@
     const formAdd = document.getElementById('formAdd');
     const ekorEl = document.getElementById('ekor');
     const beratEl = document.getElementById('berat');
-    const btnSubmit = document.getElementById('btnSubmit');
     const errMsg = document.getElementById('errMsg');
 
     const rowsEl = document.getElementById('rows');
@@ -256,9 +253,6 @@
     const beratBersihEl = document.getElementById('beratBersih');
     const bwBersihEl = document.getElementById('bwBersih');
 
-    /** data item:
-     * { ekor: number (int), berat: number (float) }
-     */
     let items = [];
 
     function showError(msg){
@@ -286,7 +280,6 @@
     }
 
     function render(){
-      // list
       rowsEl.innerHTML = '';
       if (items.length === 0){
         rowsEl.appendChild(emptyState);
@@ -306,7 +299,6 @@
         });
       }
 
-      // totals
       const totalKotak = items.length;
       const totalEkor = items.reduce((a, x) => a + x.ekor, 0);
       const beratBersih = items.reduce((a, x) => a + x.berat, 0);
@@ -318,7 +310,6 @@
       bwBersihEl.textContent = bw.toFixed(2);
     }
 
-    // delete (event delegation)
     rowsEl.addEventListener('click', (e) => {
       const btn = e.target.closest('button.del');
       if (!btn) return;
@@ -337,27 +328,36 @@
       if (!Number.isFinite(ekor) || ekor <= 0){
         showError('Ekor harus angka dan > 0.');
         ekorEl.focus();
+        ekorEl.select();
         return;
       }
       if (!Number.isFinite(berat) || berat < 0){
         showError('Berat kotak harus angka (boleh desimal) dan >= 0.');
         beratEl.focus();
+        beratEl.select();
         return;
       }
 
       items.push({ ekor, berat });
       render();
 
-      // reset input
-      ekorEl.value = '';
+      // Ekor tetap, berat dikosongkan, fokus balik ke berat
       beratEl.value = '';
-      ekorEl.focus();
+      beratEl.focus();
     }
 
-    // tombol submit + Enter di keyboard -> event submit
     formAdd.addEventListener('submit', (e) => {
       e.preventDefault();
       addItem();
+    });
+
+    // Enter pada field ekor: pindah ke berat (tidak submit)
+    ekorEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        beratEl.focus();
+        beratEl.select();
+      }
     });
 
     // rapikan input berat ke 1 desimal saat blur
@@ -368,13 +368,11 @@
     });
 
     // fallback iOS: kalau user tekan Done lalu blur, otomatis submit jika kedua field terisi
-    // (tanpa mengganggu user yang masih kosong)
     beratEl.addEventListener('blur', () => {
       const ek = parseIntSafe(ekorEl.value);
       const be = parseFloatSafe(beratEl.value);
       if (!Number.isFinite(ek) || !Number.isFinite(be)) return;
 
-      // requestSubmit agar sama seperti klik submit (kalau tersedia)
       setTimeout(() => {
         if (typeof formAdd.requestSubmit === 'function') formAdd.requestSubmit();
         else addItem();
