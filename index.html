@@ -12,10 +12,12 @@
       --text:#111827;
       --muted:#6b7280;
       --danger:#dc2626;
-      --accent:#facc15;  /* tombol kuning */
-      --accentHover:#f59e0b;
+
+      --accent:#facc15;   /* kuning */
+      --accentText:#111827;
     }
-    *{ box-sizing:border-box; }
+
+    *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
     body{
       margin:0;
       padding:16px;
@@ -72,31 +74,35 @@
       border-color:#93c5fd;
       box-shadow: 0 0 0 3px rgba(59,130,246,.15);
     }
+    .field input.invalid{
+      border-color: var(--danger);
+      box-shadow: 0 0 0 3px rgba(220,38,38,.15);
+    }
 
     .btn{
+      width:100%;
       border: 0;
       border-radius: 10px;
       padding: 12px 14px;
       font-weight: 900;
       cursor: pointer;
+
       background: var(--accent);
-      color:#111827;
-    }
-    .btn:hover{ background: var(--accentHover); }
-    .btn:disabled{ opacity:.6; cursor:not-allowed; }
+      color: var(--accentText);
 
-    /* error disembunyikan default; hanya muncul saat invalid */
-    .err{
-      margin-top: 8px;
-      font-size: 12px;
-      color: var(--danger);
-      display:none;
+      -webkit-appearance: none;
+      appearance: none;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
     }
-    .err.show{ display:block; }
+    /* Pastikan saat ditekan tetap kuning (tidak oranye) */
+    .btn:active{ background: var(--accent); }
+    .btn:focus-visible{
+      outline: 3px solid rgba(59,130,246,.25);
+      outline-offset: 2px;
+    }
 
-    .summary{
-      margin-top: 14px;
-    }
+    .summary{ margin-top: 14px; }
     .summary-grid{
       display:grid;
       grid-template-columns: repeat(4, 1fr);
@@ -122,9 +128,7 @@
       font-weight:900;
     }
 
-    .list{
-      margin-top: 14px;
-    }
+    .list{ margin-top: 14px; }
     .list-head, .list-row{
       display:grid;
       grid-template-columns: 56px 1fr 1fr 92px;
@@ -165,22 +169,16 @@
       padding: 10px 10px;
       font-weight: 900;
       cursor:pointer;
+      -webkit-appearance: none;
+      appearance: none;
     }
-    .del:hover{ background:#fff5f5; }
+    .del:active{ background:#fff5f5; }
 
     .empty{
       padding: 14px 12px;
       color: var(--muted);
       font-size: 13px;
     }
-
-    /* Opsional: hilangkan spinner number di WebKit (jaga-jaga) */
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-    input[type="number"] { -moz-appearance: textfield; }
   </style>
 </head>
 <body>
@@ -202,8 +200,6 @@
 
           <button class="btn" id="btnSubmit" type="submit">Submit</button>
         </div>
-
-        <div class="err" id="errMsg"></div>
       </form>
     </div>
 
@@ -245,7 +241,6 @@
     const formAdd = document.getElementById('formAdd');
     const ekorEl = document.getElementById('ekor');
     const beratEl = document.getElementById('berat');
-    const errMsg = document.getElementById('errMsg');
 
     const rowsEl = document.getElementById('rows');
     const emptyState = document.getElementById('emptyState');
@@ -256,14 +251,11 @@
     const bwBersihEl = document.getElementById('bwBersih');
 
     let items = [];
+    let lastSubmitAt = 0;
 
-    function showError(msg){
-      errMsg.textContent = msg;
-      errMsg.classList.add('show');
-    }
-    function clearError(){
-      errMsg.textContent = '';
-      errMsg.classList.remove('show');
+    function markInvalid(el){
+      el.classList.add('invalid');
+      setTimeout(() => el.classList.remove('invalid'), 900);
     }
 
     function parseIntSafe(s){
@@ -322,19 +314,24 @@
     });
 
     function addItem(){
-      clearError();
+      const now = Date.now();
+      if (now - lastSubmitAt < 250) return; // guard anti double-submit
+      lastSubmitAt = now;
+
+      ekorEl.classList.remove('invalid');
+      beratEl.classList.remove('invalid');
 
       const ekor = parseIntSafe(ekorEl.value);
       const berat = parseFloatSafe(beratEl.value);
 
       if (!Number.isFinite(ekor) || ekor <= 0){
-        showError('Ekor harus angka dan > 0.');
+        markInvalid(ekorEl);
         ekorEl.focus();
         ekorEl.select();
         return;
       }
       if (!Number.isFinite(berat) || berat < 0){
-        showError('Berat kotak harus angka (boleh desimal) dan >= 0.');
+        markInvalid(beratEl);
         beratEl.focus();
         beratEl.select();
         return;
