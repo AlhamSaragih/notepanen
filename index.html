@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Catatan Panen (List)</title>
+  <style>
+    :root{
+      --bg:#ffffff;
+      --card:#f8fafc;
+      --line:#e5e7eb;
+      --text:#111827;
+      --muted:#6b7280;
+      --danger:#dc2626;
+      --accent:#facc15; /* tombol kuning */
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      padding:16px;
+      font-family: system-ui, Arial, sans-serif;
+      color:var(--text);
+      background:var(--bg);
+    }
+    .wrap{ max-width: 980px; margin: 0 auto; }
+
+    h1{
+      margin: 0 0 14px 0;
+      text-align:center;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: .2px;
+    }
+
+    /* supaya nyaman di HP (anti clipping + anti auto zoom iOS) */
+    input, button { font-size:16px; line-height:1.2; }
+
+    .card{
+      border:1px solid var(--line);
+      background: var(--card);
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .form-grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items:end;
+    }
+    @media (max-width: 640px){
+      .form-grid{ grid-template-columns: 1fr 1fr; }
+      .form-grid .btn{ grid-column: 1 / -1; }
+    }
+
+    .field label{
+      display:block;
+      font-weight:700;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+    .field input{
+      width:100%;
+      border:1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 12px;
+      background:#fff;
+      outline:none;
+    }
+    .field input:focus{
+      border-color:#93c5fd;
+      box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+    }
+
+    .btn{
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-weight: 800;
+      cursor: pointer;
+      background: var(--accent);
+      color:#111827;
+    }
+    .btn:disabled{ opacity:.6; cursor:not-allowed; }
+
+    .hint{
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .err{
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--danger);
+      display:none;
+    }
+    .err.show{ display:block; }
+
+    .summary{
+      margin-top: 14px;
+    }
+    .summary-grid{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 640px){
+      .summary-grid{ grid-template-columns: repeat(2, 1fr); }
+    }
+    .stat{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .stat .k{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight:700;
+    }
+    .stat .v{
+      margin-top: 6px;
+      font-size: 16px;
+      font-weight:900;
+    }
+
+    .list{
+      margin-top: 14px;
+    }
+    .list-head, .list-row{
+      display:grid;
+      grid-template-columns: 56px 1fr 1fr 92px;
+      gap: 10px;
+      align-items:center;
+    }
+    .list-head{
+      padding: 10px 12px;
+      font-weight: 800;
+      color: #374151;
+      border-bottom: 2px solid var(--line);
+      background: #fff;
+      border-radius: 10px 10px 0 0;
+      border:1px solid var(--line);
+      border-bottom: 2px solid var(--line);
+    }
+    .rows{
+      border:1px solid var(--line);
+      border-top:0;
+      border-radius: 0 0 10px 10px;
+      background:#fff;
+      overflow:hidden;
+    }
+    .list-row{
+      padding: 10px 12px;
+      border-top: 1px solid var(--line);
+    }
+    .no{
+      font-weight: 900;
+      color:#111827;
+      text-align:center;
+    }
+    .muted{ color: var(--muted); }
+
+    .del{
+      border:1px solid #fecaca;
+      background:#fff;
+      color: var(--danger);
+      border-radius: 10px;
+      padding: 10px 10px;
+      font-weight: 900;
+      cursor:pointer;
+    }
+    .del:hover{ background:#fff5f5; }
+
+    .empty{
+      padding: 14px 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Catatan Panen</h1>
+
+    <!-- INPUT UTAMA -->
+    <div class="card">
+      <form id="formAdd" autocomplete="off">
+        <div class="form-grid">
+          <div class="field">
+            <label for="ekor">Ekor</label>
+            <input id="ekor" type="text" inputmode="numeric" enterkeyhint="next" placeholder="Misal: 12" />
+          </div>
+
+          <div class="field">
+            <label for="berat">Berat kotak</label>
+            <input id="berat" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Misal: 23.5" />
+          </div>
+
+          <button class="btn" id="btnSubmit" type="submit">Submit</button>
+        </div>
+
+        <div class="hint">Tip: bisa klik Submit, atau tekan Enter/Done di keyboard.</div>
+        <div class="err" id="errMsg"></div>
+      </form>
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="summary">
+      <div class="summary-grid">
+        <div class="stat">
+          <div class="k">Total kotak</div>
+          <div class="v" id="totalKotak">0</div>
+        </div>
+        <div class="stat">
+          <div class="k">Total ekor</div>
+          <div class="v" id="totalEkor">0</div>
+        </div>
+        <div class="stat">
+          <div class="k">Berat bersih</div>
+          <div class="v" id="beratBersih">0.0</div>
+        </div>
+        <div class="stat">
+          <div class="k">BW bersih</div>
+          <div class="v" id="bwBersih">0.00</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIST -->
+    <div class="list">
+      <div class="list-head">
+        <div>No.</div>
+        <div>Ekor</div>
+        <div>Berat kotak</div>
+        <div>Aksi</div>
+      </div>
+      <div class="rows" id="rows">
+        <div class="empty" id="emptyState">Belum ada data. Isi Ekor + Berat kotak lalu Submit.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const formAdd = document.getElementById('formAdd');
+    const ekorEl = document.getElementById('ekor');
+    const beratEl = document.getElementById('berat');
+    const btnSubmit = document.getElementById('btnSubmit');
+    const errMsg = document.getElementById('errMsg');
+
+    const rowsEl = document.getElementById('rows');
+    const emptyState = document.getElementById('emptyState');
+
+    const totalKotakEl = document.getElementById('totalKotak');
+    const totalEkorEl = document.getElementById('totalEkor');
+    const beratBersihEl = document.getElementById('beratBersih');
+    const bwBersihEl = document.getElementById('bwBersih');
+
+    /** data item:
+     * { ekor: number (int), berat: number (float) }
+     */
+    let items = [];
+
+    function showError(msg){
+      errMsg.textContent = msg;
+      errMsg.classList.add('show');
+    }
+    function clearError(){
+      errMsg.textContent = '';
+      errMsg.classList.remove('show');
+    }
+
+    function parseIntSafe(s){
+      const v = parseInt(String(s).replace(/[^\d]/g, ''), 10);
+      return Number.isFinite(v) ? v : NaN;
+    }
+
+    function parseFloatSafe(s){
+      const norm = String(s).trim().replace(',', '.');
+      const v = parseFloat(norm);
+      return Number.isFinite(v) ? v : NaN;
+    }
+
+    function formatOneDecimal(n){
+      return (Math.round(n * 10) / 10).toFixed(1);
+    }
+
+    function render(){
+      // list
+      rowsEl.innerHTML = '';
+      if (items.length === 0){
+        rowsEl.appendChild(emptyState);
+        emptyState.style.display = 'block';
+      } else {
+        emptyState.style.display = 'none';
+        items.forEach((it, idx) => {
+          const row = document.createElement('div');
+          row.className = 'list-row';
+          row.innerHTML = `
+            <div class="no">${idx + 1}</div>
+            <div>${it.ekor}</div>
+            <div>${formatOneDecimal(it.berat)}</div>
+            <div><button class="del" type="button" data-idx="${idx}">Delete</button></div>
+          `;
+          rowsEl.appendChild(row);
+        });
+      }
+
+      // totals
+      const totalKotak = items.length;
+      const totalEkor = items.reduce((a, x) => a + x.ekor, 0);
+      const beratBersih = items.reduce((a, x) => a + x.berat, 0);
+      const bw = totalEkor > 0 ? (beratBersih / totalEkor) : 0;
+
+      totalKotakEl.textContent = String(totalKotak);
+      totalEkorEl.textContent = String(totalEkor);
+      beratBersihEl.textContent = formatOneDecimal(beratBersih);
+      bwBersihEl.textContent = bw.toFixed(2);
+    }
+
+    // delete (event delegation)
+    rowsEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('button.del');
+      if (!btn) return;
+      const idx = parseInt(btn.dataset.idx, 10);
+      if (!Number.isFinite(idx)) return;
+      items.splice(idx, 1);
+      render();
+    });
+
+    function addItem(){
+      clearError();
+
+      const ekor = parseIntSafe(ekorEl.value);
+      const berat = parseFloatSafe(beratEl.value);
+
+      if (!Number.isFinite(ekor) || ekor <= 0){
+        showError('Ekor harus angka dan > 0.');
+        ekorEl.focus();
+        return;
+      }
+      if (!Number.isFinite(berat) || berat < 0){
+        showError('Berat kotak harus angka (boleh desimal) dan >= 0.');
+        beratEl.focus();
+        return;
+      }
+
+      items.push({ ekor, berat });
+      render();
+
+      // reset input
+      ekorEl.value = '';
+      beratEl.value = '';
+      ekorEl.focus();
+    }
+
+    // tombol submit + Enter di keyboard -> event submit
+    formAdd.addEventListener('submit', (e) => {
+      e.preventDefault();
+      addItem();
+    });
+
+    // rapikan input berat ke 1 desimal saat blur
+    beratEl.addEventListener('blur', () => {
+      const v = parseFloatSafe(beratEl.value);
+      if (!Number.isFinite(v)) return;
+      beratEl.value = formatOneDecimal(v);
+    });
+
+    // fallback iOS: kalau user tekan Done lalu blur, otomatis submit jika kedua field terisi
+    // (tanpa mengganggu user yang masih kosong)
+    beratEl.addEventListener('blur', () => {
+      const ek = parseIntSafe(ekorEl.value);
+      const be = parseFloatSafe(beratEl.value);
+      if (!Number.isFinite(ek) || !Number.isFinite(be)) return;
+
+      // requestSubmit agar sama seperti klik submit (kalau tersedia)
+      setTimeout(() => {
+        if (typeof formAdd.requestSubmit === 'function') formAdd.requestSubmit();
+        else addItem();
+      }, 120);
+    });
+
+    render();
+  </script>
+</body>
+</html>
