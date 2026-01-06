@@ -12,8 +12,8 @@
       --text:#111827;
       --muted:#6b7280;
       --danger:#dc2626;
-      --accent:#facc15;  /* tombol biru */
-      
+      --accent:#facc15;  /* tombol kuning */
+      --accentHover:#f59e0b;
     }
     *{ box-sizing:border-box; }
     body{
@@ -77,19 +77,15 @@
       border: 0;
       border-radius: 10px;
       padding: 12px 14px;
-      font-weight: 800;
+      font-weight: 900;
       cursor: pointer;
       background: var(--accent);
-      color:#ffffff;
+      color:#111827;
     }
     .btn:hover{ background: var(--accentHover); }
     .btn:disabled{ opacity:.6; cursor:not-allowed; }
 
-    .hint{
-      margin-top: 8px;
-      font-size: 12px;
-      color: var(--muted);
-    }
+    /* error disembunyikan default; hanya muncul saat invalid */
     .err{
       margin-top: 8px;
       font-size: 12px;
@@ -139,7 +135,6 @@
       padding: 10px 12px;
       font-weight: 800;
       color: #374151;
-      border-bottom: 2px solid var(--line);
       background: #fff;
       border-radius: 10px 10px 0 0;
       border:1px solid var(--line);
@@ -178,6 +173,14 @@
       color: var(--muted);
       font-size: 13px;
     }
+
+    /* Opsional: hilangkan spinner number di WebKit (jaga-jaga) */
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] { -moz-appearance: textfield; }
   </style>
 </head>
 <body>
@@ -200,8 +203,7 @@
           <button class="btn" id="btnSubmit" type="submit">Submit</button>
         </div>
 
-        
-      
+        <div class="err" id="errMsg"></div>
       </form>
     </div>
 
@@ -360,14 +362,14 @@
       }
     });
 
-    // rapikan input berat ke 1 desimal saat blur
+    // Rapikan input berat ke 1 desimal saat blur
     beratEl.addEventListener('blur', () => {
       const v = parseFloatSafe(beratEl.value);
       if (!Number.isFinite(v)) return;
       beratEl.value = formatOneDecimal(v);
     });
 
-    // fallback iOS: kalau user tekan Done lalu blur, otomatis submit jika kedua field terisi
+    // Fallback iOS: Done -> blur -> auto submit jika kedua field terisi
     beratEl.addEventListener('blur', () => {
       const ek = parseIntSafe(ekorEl.value);
       const be = parseFloatSafe(beratEl.value);
