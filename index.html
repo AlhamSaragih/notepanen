@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Catatan Panen (List)</title>
+  <title>Catatan Panen</title>
   <style>
     :root{
       --bg:#ffffff;
@@ -86,16 +86,14 @@
       padding: 12px 14px;
       font-weight: 900;
       cursor: pointer;
-
       background: var(--accent);
       color: var(--accentText);
-
       -webkit-appearance: none;
       appearance: none;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
     }
-    /* Pastikan saat ditekan tetap kuning (tidak oranye) */
+    /* pastikan saat ditekan tetap kuning */
     .btn:active{ background: var(--accent); }
     .btn:focus-visible{
       outline: 3px solid rgba(59,130,246,.25);
@@ -131,7 +129,7 @@
     .list{ margin-top: 14px; }
     .list-head, .list-row{
       display:grid;
-      grid-template-columns: 56px 1fr 1fr 92px;
+      grid-template-columns: 56px 1fr 1fr 122px;
       gap: 10px;
       align-items:center;
     }
@@ -161,16 +159,38 @@
       text-align:center;
     }
 
-    .del{
-      border:1px solid #fecaca;
-      background:#fff;
-      color: var(--danger);
+    .actions{
+      display:flex;
+      gap:8px;
+      justify-content:flex-end;
+    }
+
+    .eye, .del{
       border-radius: 10px;
       padding: 10px 10px;
       font-weight: 900;
       cursor:pointer;
-      -webkit-appearance: none;
-      appearance: none;
+      -webkit-appearance:none;
+      appearance:none;
+      user-select:none;
+      line-height: 1;
+      min-width: 44px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .eye{
+      border:1px solid #d1d5db;
+      background:#fff;
+      color:#111827;
+    }
+    .eye:active{ background:#f3f4f6; }
+
+    .del{
+      border:1px solid #fecaca;
+      background:#fff;
+      color: var(--danger);
     }
     .del:active{ background:#fff5f5; }
 
@@ -179,6 +199,19 @@
       color: var(--muted);
       font-size: 13px;
     }
+
+    dialog{
+      border:1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 14px;
+      max-width: 340px;
+      width: calc(100% - 32px);
+      background: #fff;
+    }
+    dialog::backdrop{ background: rgba(0,0,0,.35); }
+    .dlg-title{ font-weight: 900; font-size: 16px; margin-bottom: 8px; }
+    .dlg-body{ font-size: 14px; color: #374151; line-height: 1.4; }
+    .dlg-actions{ margin-top: 12px; }
   </style>
 </head>
 <body>
@@ -237,6 +270,15 @@
     </div>
   </div>
 
+  <!-- Dialog jumlah berat 1..N -->
+  <dialog id="sumDialog">
+    <div class="dlg-title">Jumlah berat</div>
+    <div class="dlg-body" id="sumText"></div>
+    <form class="dlg-actions" method="dialog">
+      <button class="btn" type="submit">Tutup</button>
+    </form>
+  </dialog>
+
   <script>
     const formAdd = document.getElementById('formAdd');
     const ekorEl = document.getElementById('ekor');
@@ -250,9 +292,38 @@
     const beratBersihEl = document.getElementById('beratBersih');
     const bwBersihEl = document.getElementById('bwBersih');
 
+    const sumDialog = document.getElementById('sumDialog');
+    const sumText = document.getElementById('sumText');
+
     let items = [];
     let lastSubmitAt = 0;
 
+    // ======= Confirm sebelum refresh/leave =======
+    let warnOnLeave = false;
+    let userHasInteracted = false;
+
+    function beforeUnloadHandler(e) {
+      if (!warnOnLeave) return;
+      e.preventDefault();
+      e.returnValue = '';
+    }
+
+    function enableLeaveWarning() {
+      warnOnLeave = true;
+      if (userHasInteracted) window.addEventListener('beforeunload', beforeUnloadHandler);
+    }
+
+    function disableLeaveWarning() {
+      warnOnLeave = false;
+      window.removeEventListener('beforeunload', beforeUnloadHandler);
+    }
+
+    window.addEventListener('pointerdown', () => {
+      userHasInteracted = true;
+      if (warnOnLeave) window.addEventListener('beforeunload', beforeUnloadHandler);
+    }, { once: true });
+
+    // ======= Helpers =======
     function markInvalid(el){
       el.classList.add('invalid');
       setTimeout(() => el.classList.remove('invalid'), 900);
@@ -287,7 +358,17 @@
             <div class="no">${idx + 1}</div>
             <div>${it.ekor}</div>
             <div>${formatOneDecimal(it.berat)}</div>
-            <div><button class="del" type="button" data-idx="${idx}">Delete</button></div>
+            <div class="actions">
+              <button class="eye" type="button" data-idx="${idx}" aria-label="Lihat jumlah">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M2 12C4.5 7.5 8 5 12 5C16 5 19.5 7.5 22 12C19.5 16.5 16 19 12 19C8 19 4.5 16.5 2 12Z"
+                    stroke="currentColor" stroke-width="2"/>
+                  <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                </svg>
+              </button>
+              <button class="del" type="button" data-idx="${idx}">Del</button>
+            </div>
           `;
           rowsEl.appendChild(row);
         });
@@ -302,16 +383,10 @@
       totalEkorEl.textContent = String(totalEkor);
       beratBersihEl.textContent = formatOneDecimal(beratBersih);
       bwBersihEl.textContent = bw.toFixed(2);
-    }
 
-    rowsEl.addEventListener('click', (e) => {
-      const btn = e.target.closest('button.del');
-      if (!btn) return;
-      const idx = parseInt(btn.dataset.idx, 10);
-      if (!Number.isFinite(idx)) return;
-      items.splice(idx, 1);
-      render();
-    });
+      if (items.length === 0) disableLeaveWarning();
+      else enableLeaveWarning();
+    }
 
     function addItem(){
       const now = Date.now();
@@ -345,6 +420,7 @@
       beratEl.focus();
     }
 
+    // Submit button + Enter
     formAdd.addEventListener('submit', (e) => {
       e.preventDefault();
       addItem();
@@ -376,6 +452,32 @@
         if (typeof formAdd.requestSubmit === 'function') formAdd.requestSubmit();
         else addItem();
       }, 120);
+    });
+
+    // Click actions (event delegation)
+    rowsEl.addEventListener('click', (e) => {
+      const eyeBtn = e.target.closest('button.eye');
+      if (eyeBtn) {
+        const idx = parseInt(eyeBtn.dataset.idx, 10);
+        if (!Number.isFinite(idx)) return;
+
+        const sum = items
+          .slice(0, idx + 1)
+          .reduce((acc, x) => acc + x.berat, 0);
+
+        sumText.textContent = `Total berat dari No. 1 sampai No. ${idx + 1} = ${formatOneDecimal(sum)}`;
+        if (typeof sumDialog.showModal === 'function') sumDialog.showModal();
+        else alert(sumText.textContent);
+        return;
+      }
+
+      const delBtn = e.target.closest('button.del');
+      if (delBtn) {
+        const idx = parseInt(delBtn.dataset.idx, 10);
+        if (!Number.isFinite(idx)) return;
+        items.splice(idx, 1);
+        render();
+      }
     });
 
     render();
